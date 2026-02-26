@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Full Price Sales Dashboard — by Area</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d0d0d;
+  --surface: #161616;
+  --border: #252525;
+  --text: #e6e2da;
+  --muted: #5e5a55;
+  --chase: #22c55e;
+  --protect: #60a5fa;
+  --monitor: #fbbf24;
+  --markdown: #f87171;
+}
+body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; min-height:100vh; overflow:hidden; }
+header {
+  padding: 28px 40px 0;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+h1 { font-family:'DM Serif Display',serif; font-size:26px; font-weight:400; line-height:1.1; }
+h1 em { font-style:italic; color:var(--monitor); }
+.header-sub { margin-top:4px; font-family:'DM Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
+.legend { display:flex; gap:14px; flex-wrap:wrap; align-items:center; padding-bottom:2px; }
+.li { display:flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:0.07em; cursor:pointer; padding:4px 8px; border:1px solid transparent; border-radius:3px; transition:all 0.15s; opacity:0.5; }
+.li.on { opacity:1; border-color:currentColor; }
+.li[data-a="Chase / Replenish"]{ color:var(--chase); }
+.li[data-a="Protect Full Price"]{ color:var(--protect); }
+.li[data-a="Monitor & Set Triggers"]{ color:var(--monitor); }
+.li[data-a="Markdown Now"]{ color:var(--markdown); }
+.ld { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
+.tab-scroll { overflow-x:auto; border-bottom:1px solid var(--border); margin-top:20px; scrollbar-width:none; }
+.tab-scroll::-webkit-scrollbar { display:none; }
+.tabs { display:flex; min-width:max-content; padding:0 40px; }
+.tab { padding:9px 16px; font-family:'DM Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:all 0.15s; display:flex; flex-direction:column; gap:2px; align-items:center; }
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--text); border-bottom-color:var(--text); }
+.tab-s { font-size:9px; }
+.content { display:flex; height:calc(100vh - 172px); }
+.chart-panel { flex:0 0 400px; border-right:1px solid var(--border); padding:16px 12px 16px 40px; display:flex; flex-direction:column; overflow:hidden; }
+.panel-title { font-family:'DM Mono',monospace; font-size:9px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:10px; }
+.stat-strip { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; background:var(--border); border:1px solid var(--border); border-radius:3px; overflow:hidden; margin-bottom:12px; flex-shrink:0; }
+.stat { background:var(--surface); padding:9px 11px; }
+.stat-l { font-family:'DM Mono',monospace; font-size:8px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:2px; }
+.stat-v { font-family:'DM Serif Display',serif; font-size:17px; line-height:1; }
+#bsvg { flex:1; width:100%; }
+.table-panel { flex:1; overflow-y:auto; }
+table { width:100%; border-collapse:collapse; }
+thead { position:sticky; top:0; z-index:10; background:var(--bg); }
+th { padding:11px 13px; font-family:'DM Mono',monospace; font-size:8px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; cursor:pointer; user-select:none; }
+th:hover { color:var(--text); }
+th.sa::after { content:' ↓'; } th.sd::after { content:' ↑'; }
+th:first-child { padding-left:28px; }
+tr.row { border-bottom:1px solid #191919; transition:background 0.1s; }
+tr.row:hover { background:var(--surface); }
+td { padding:10px 13px; vertical-align:middle; }
+td:first-child { padding-left:28px; }
+.sn { font-size:12px; font-weight:500; }
+.sm { font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); margin-top:2px; }
+.sv { font-family:'DM Mono',monospace; font-size:11px; }
+.sv2 { font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:2px; }
+.stw { display:flex; align-items:center; gap:7px; }
+.stb { height:3px; border-radius:2px; flex-shrink:0; }
+.stn { font-family:'DM Mono',monospace; font-size:11px; }
+.dfb{padding:4px 11px;border:1px solid var(--border);border-radius:2px;background:transparent;color:var(--muted);font-family:DM Mono,monospace;font-size:9px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;transition:all .12s}
+.dfb:hover{border-color:#444;color:var(--text)}
+.dfa{background:var(--text)!important;color:var(--bg)!important;border-color:var(--text)!important}
+.badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:2px; font-family:'DM Mono',monospace; font-size:8px; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap; }
+.bc { background:rgba(34,197,94,0.1); color:var(--chase); }
+.bp { background:rgba(96,165,250,0.1); color:var(--protect); }
+.bm { background:rgba(251,191,36,0.1); color:var(--monitor); }
+.bd { background:rgba(248,113,113,0.1); color:var(--markdown); }
+.nd { padding:40px; text-align:center; font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
+#tt { position:fixed; background:#1a1a1a; border:1px solid #303030; padding:10px 14px; border-radius:4px; pointer-events:none; opacity:0; transition:opacity 0.12s; z-index:999; min-width:200px; }
+.tn { font-weight:600; font-size:11px; margin-bottom:6px; }
+.tr { display:flex; justify-content:space-between; gap:16px; font-family:'DM Mono',monospace; font-size:9px; color:var(--muted); margin-top:2px; }
+.tr b { color:var(--text); font-weight:400; }
+@media(max-width:800px){ .chart-panel{display:none;} body{overflow:auto;} .content{height:auto;} }
+</style>
+</head>
+<body>
+<div id="tt"><div class="tn" id="tt-n"></div><div class="tr"><span>Category</span><b id="tt-c"></b></div><div class="tr"><span>Net Sales</span><b id="tt-s"></b></div><div class="tr"><span>On Hand</span><b id="tt-o"></b></div><div class="tr"><span>Sell Thru</span><b id="tt-st"></b></div><div class="tr"><span>AUR</span><b id="tt-a"></b></div><div class="tr"><span>Action</span><b id="tt-ac"></b></div></div>
+<header>
+  <div><h1>Full Price Performance <em>by Area</em></h1><div class="header-sub">Full Price &nbsp;·&nbsp; Top 15 segments per division per area &nbsp;·&nbsp; <span id="week-label">Loading...</span></div></div>
+  <div class="legend" id="leg">
+    <div class="li on" data-a="Chase / Replenish"><div class="ld" style="background:var(--chase)"></div>Chase</div>
+    <div class="li on" data-a="Protect Full Price"><div class="ld" style="background:var(--protect)"></div>Protect</div>
+    <div class="li on" data-a="Monitor & Set Triggers"><div class="ld" style="background:var(--monitor)"></div>Monitor</div>
+    <div class="li on" data-a="Markdown Now"><div class="ld" style="background:var(--markdown)"></div>Markdown</div>
+  </div>
+</header>
+<div class="tab-scroll"><div class="tabs" id="tabs"></div></div>
+<div id="divf" style="display:flex;gap:5px;align-items:center;padding:7px 16px;border-bottom:1px solid var(--border);background:var(--bg)">
+  <span style="font-family:DM Mono,monospace;font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-right:4px">Division</span>
+  <button class="dfb dfa" data-d="All">All</button>
+  <button class="dfb" data-d="Mens">Mens</button>
+  <button class="dfb" data-d="Womens">Womens</button>
+  <button class="dfb" data-d="Non Apparel">Non Apparel</button>
+</div>
+<div class="content">
+  <div class="chart-panel">
+    <div class="panel-title">Sell Thru % vs Net Sales &nbsp;·&nbsp; bubble size = on-hand units</div>
+    <div class="stat-strip" id="ss"></div>
+    <svg id="bsvg"></svg>
+  </div>
+  <div class="table-panel">
+    <table><thead><tr id="th"></tr></thead><tbody id="tb"></tbody></table>
+    <div class="nd" id="nd" style="display:none">No data for current filters</div>
+  </div>
+</div>
+<script>
+const SHEETS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS0Hk7mXlF4IlAj61b_fYfJkeAiUD5nILyHNbgV5KImShfnIWhry3PAxZkrNESvpQcn2kQK2ADoKrPe/pub?gid=0&single=true&output=csv";
+
+const AC={'Chase / Replenish':'bc','Protect Full Price':'bp','Monitor & Set Triggers':'bm','Markdown Now':'bd'};
+const COL={'Chase / Replenish':'var(--chase)','Protect Full Price':'var(--protect)','Monitor & Set Triggers':'var(--monitor)','Markdown Now':'var(--markdown)'};
+const AREA_ORDER=["Southwest","NYC","Florida","South Central","Pacific Northwest","Greater LA + HI","Southeast","Rocky Mountain","Jersey","New England","Mid-Atlantic","Great Lakes","Midwest","Hamptons"];
+
+let D=[], SBD={};
+let area=null, curDiv='All', acts=new Set(['Chase / Replenish','Protect Full Price','Monitor & Set Triggers','Markdown Now']), sk='sales', sd=-1;
+
+const f$=n=>n>=1000?'$'+(n/1000).toFixed(0)+'K':'$'+n;
+const ff$=n=>'$'+Math.round(n).toLocaleString();
+const fn=n=>n.toLocaleString();
+
+// ── CSV PARSING ────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  // Find header row (first row with 'Division' or 'Price Level')
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(5, lines.length); i++) {
+    if (lines[i].includes('Division') || lines[i].includes('Price Level')) {
+      headerIdx = i; break;
+    }
+  }
+  const headers = parseRow(lines[headerIdx]);
+  const rows = [];
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const vals = parseRow(lines[i]);
+    if (vals.length < 5) continue;
+    const row = {};
+    headers.forEach((h, j) => row[h.trim()] = (vals[j]||'').trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+function parseRow(line) {
+  const result = [], re = /("(?:[^"]|"")*"|[^,]*)/g;
+  let m;
+  while ((m = re.exec(line)) !== null) {
+    if (m.index === re.lastIndex) re.lastIndex++;
+    let v = m[1];
+    if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1,-1).replace(/""/g,'"');
+    result.push(v);
+  }
+  return result;
+}
+
+function parseNum(s) {
+  if (!s) return 0;
+  return parseFloat(String(s).replace(/[$,]/g,'')) || 0;
+}
+
+// ── DATA PROCESSING ───────────────────────────────────────────
+function processRows(rawRows) {
+  // Filter full price only
+  const fp = rawRows.filter(r => {
+    const pl = r['Price Level'] || r['price level'] || r['PRICE LEVEL'] || '';
+    return pl.toLowerCase().includes('full');
+  });
+
+  // Detect column names flexibly
+  const sample = fp[0] || {};
+  const keys = Object.keys(sample);
+  const col = name => keys.find(k => k.toLowerCase().includes(name.toLowerCase())) || name;
+
+  const divCol = col('division');
+  const catCol = col('category');
+  const segCol = col('segment') || col('product');
+  const areaCol = col('area');
+  const salesCol = col('net sales $') || col('net sales') || col('sales');
+  const unitsCol = col('net sales units') || col('units sold') || col('units');
+  const ohCol = col('on hand units') || col('on hand');
+
+  // Detect week label from data (try to find date-related columns or use today)
+  const today = new Date();
+  const weekLabel = `Week of ${today.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}`;
+  document.getElementById('week-label').textContent = weekLabel;
+
+  // Group by area + division + segment
+  const grouped = {};
+  fp.forEach(r => {
+    const area = r[areaCol] || '';
+    const div = r[divCol] || '';
+    const cat = r[catCol] || '';
+    const seg = r[segCol] || '';
+    if (!area || !div || !seg) return;
+    const key = `${area}||${div}||${cat}||${seg}`;
+    if (!grouped[key]) grouped[key] = {area, division:div, category:cat, segment:seg, sales:0, units:0, oh:0};
+    grouped[key].sales += parseNum(r[salesCol]);
+    grouped[key].units += parseNum(r[unitsCol]);
+    grouped[key].oh += parseNum(r[ohCol]);
+  });
+
+  const rows = Object.values(grouped).filter(r => r.sales > 300);
+
+  function getAction(r) {
+    const avail = r.units + r.oh;
+    if (avail === 0) return 'Markdown Now';
+    const st = r.units / avail * 100;
+    if (st >= 8) return 'Chase / Replenish';
+    if (st >= 5.5) return 'Protect Full Price';
+    if (st >= 3.5) return 'Monitor & Set Triggers';
+    return 'Markdown Now';
+  }
+
+  rows.forEach(r => {
+    const avail = r.units + r.oh;
+    r.st = avail > 0 ? Math.round(r.units / avail * 1000) / 10 : 0;
+    r.aur = r.units > 0 ? Math.round(r.sales / r.units) : 0;
+    r.action = getAction(r);
+    r.sales = Math.round(r.sales);
+    r.units = Math.round(r.units);
+    r.oh = Math.round(r.oh);
+  });
+
+  // Top 15 per division per area
+  const divs = ['Mens','Womens','Non Apparel'];
+  const areas = [...new Set(rows.map(r => r.area))];
+  const D = [];
+  const seen = new Set();
+  areas.forEach(a => {
+    divs.forEach(div => {
+      rows.filter(r => r.area===a && r.division===div)
+        .sort((a,b) => b.sales - a.sales)
+        .slice(0, 15)
+        .forEach(r => {
+          const key = `${r.area}|${r.division}|${r.segment}`;
+          if (!seen.has(key)) { seen.add(key); D.push(r); }
+        });
+    });
+  });
+
+  // Build SBD (summary by division per area)
+  const SBD = {};
+  const allDivs = ['All','Mens','Womens','Non Apparel'];
+  areas.forEach(a => {
+    SBD[a] = {};
+    allDivs.forEach(div => {
+      const subset = rows.filter(r => r.area===a && (div==='All' || r.division===div));
+      const totalSales = subset.reduce((s,r) => s+r.sales, 0);
+      const totalUnits = subset.reduce((s,r) => s+r.units, 0);
+      const totalOH = subset.reduce((s,r) => s+r.oh, 0);
+      const avail = totalUnits + totalOH;
+      SBD[a][div] = {
+        total_sales: Math.round(totalSales),
+        st: avail > 0 ? Math.round(totalUnits/avail*1000)/10 : 0
+      };
+    });
+  });
+
+  return { D, SBD, areas };
+}
+
+// ── LOAD DATA ────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('nd').textContent = 'Loading data from Google Sheets...';
+  document.getElementById('nd').style.display = 'block';
+  try {
+    const resp = await fetch(SHEETS_URL);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+    const rawRows = parseCSV(text);
+    const result = processRows(rawRows);
+    D = result.D;
+    SBD = result.SBD;
+
+    // Set initial area to first in AREA_ORDER that exists in data
+    const availAreas = new Set(D.map(r => r.area));
+    area = AREA_ORDER.find(a => availAreas.has(a)) || D[0]?.area;
+
+    document.getElementById('nd').style.display = 'none';
+    buildTabs();
+    render();
+  } catch(e) {
+    document.getElementById('nd').textContent = `Error loading data: ${e.message}. Make sure your Google Sheet is published to web.`;
+    document.getElementById('nd').style.display = 'block';
+    console.error(e);
+  }
+}
+
+// Division filter
+document.getElementById('divf').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  curDiv = b.dataset.d;
+  document.querySelectorAll('.dfb').forEach(x => x.classList.toggle('dfa', x.dataset.d===curDiv));
+  buildTabs(); render();
+});
+
+function getAreaSt(a) { return (SBD[a] && SBD[a][curDiv]) || {total_sales:0, st:0}; }
+
+function buildTabs() {
+  const availAreas = new Set(D.map(r => r.area));
+  const orderedAreas = AREA_ORDER.filter(a => availAreas.has(a));
+  document.getElementById('tabs').innerHTML = orderedAreas.map(a => {
+    const s = getAreaSt(a);
+    const c = s.st>=5.5?'var(--chase)':s.st>=3.5?'var(--monitor)':'var(--markdown)';
+    return `<div class="tab${a===area?' active':''}" data-a="${a}">${a}<span class="tab-s" style="color:var(--muted)">${f$(s.total_sales)}</span><span class="tab-s" style="color:${c}">${s.st.toFixed(1)}% ST</span></div>`;
+  }).join('');
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => { area=t.dataset.a; buildTabs(); render(); }));
+}
+
+function buildStats() {
+  const s = getAreaSt(area);
+  const oh = D.filter(d => d.area===area && (curDiv==='All'||d.division===curDiv)).reduce((sum,d) => sum+d.oh, 0);
+  const c = s.st>=5.5?'var(--chase)':s.st>=3.5?'var(--monitor)':'var(--markdown)';
+  document.getElementById('ss').innerHTML = `
+    <div class="stat"><div class="stat-l">Net Sales</div><div class="stat-v" style="font-size:15px">${ff$(s.total_sales)}</div></div>
+    <div class="stat"><div class="stat-l">Sell Thru</div><div class="stat-v" style="color:${c}">${s.st.toFixed(1)}%</div></div>
+    <div class="stat"><div class="stat-l">On Hand</div><div class="stat-v" style="font-size:15px">${fn(oh)}</div></div>
+  `;
+}
+
+function buildChart() {
+  const el = document.getElementById('bsvg');
+  const W = el.parentElement.clientWidth-12, H = el.parentElement.clientHeight;
+  if (W<=0||H<=0) { setTimeout(buildChart,100); return; }
+  const pad = {top:12,right:12,bottom:36,left:42};
+  const iW = W-pad.left-pad.right, iH = H-pad.top-pad.bottom;
+  const ad = D.filter(d => d.area===area && acts.has(d.action) && (curDiv==='All'||d.division===curDiv));
+  if (!ad.length) { el.innerHTML=''; return; }
+  const mxS = Math.max(...ad.map(d=>d.sales));
+  const mxO = Math.max(...ad.map(d=>d.oh));
+  const mxT = Math.max(16,...ad.map(d=>d.st));
+  const xS = v => pad.left+(v/mxT)*iW;
+  const yS = v => pad.top+iH-(v/mxS)*iH;
+  const rS = v => 3+(v/mxO)*18;
+  let h = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+  const zones=[[0,3.5,'rgba(248,113,113,0.06)'],[3.5,5.5,'rgba(251,191,36,0.06)'],[5.5,8,'rgba(96,165,250,0.06)'],[8,mxT,'rgba(34,197,94,0.06)']];
+  zones.forEach(([a,b,bg]) => { const x0=xS(a),x1=xS(b); h+=`<rect x="${x0}" y="${pad.top}" width="${x1-x0}" height="${iH}" fill="${bg}"/>`; });
+  const step = Math.ceil(mxS/4/5000)*5000;
+  for (let v=0; v<=mxS; v+=step) {
+    const y=yS(v);
+    h+=`<line x1="${pad.left}" x2="${pad.left+iW}" y1="${y}" y2="${y}" stroke="#1d1d1d" stroke-width="1"/>`;
+    if (v>0) h+=`<text x="${pad.left-4}" y="${y+3}" text-anchor="end" fill="#383838" font-size="7" font-family="DM Mono">${v>=1000?Math.round(v/1000)+'K':v}</text>`;
+  }
+  [3.5,5.5,8].forEach(t => {
+    const x=xS(t);
+    h+=`<line x1="${x}" x2="${x}" y1="${pad.top}" y2="${pad.top+iH}" stroke="#2d2d2d" stroke-width="1" stroke-dasharray="3 3"/>`;
+    h+=`<text x="${x+3}" y="${pad.top+9}" fill="#404040" font-size="7" font-family="DM Mono">${t}%</text>`;
+  });
+  const xStep = mxT<=16?2:4;
+  for (let v=0; v<=mxT; v+=xStep) {
+    const x=xS(v);
+    h+=`<line x1="${x}" x2="${x}" y1="${pad.top+iH}" y2="${pad.top+iH+3}" stroke="#2d2d2d"/>`;
+    h+=`<text x="${x}" y="${pad.top+iH+12}" text-anchor="middle" fill="#383838" font-size="7" font-family="DM Mono">${v}%</text>`;
+  }
+  h+=`<text x="${pad.left+iW/2}" y="${H-2}" text-anchor="middle" fill="#3a3a3a" font-size="8" font-family="DM Mono" letter-spacing="0.06em">SELL THRU %</text>`;
+  h+=`<text transform="rotate(-90)" x="${-(pad.top+iH/2)}" y="9" text-anchor="middle" fill="#3a3a3a" font-size="8" font-family="DM Mono" letter-spacing="0.06em">NET SALES $</text>`;
+  const colorMap={'Chase / Replenish':'22,197,94','Protect Full Price':'96,165,250','Monitor & Set Triggers':'251,191,36','Markdown Now':'248,113,113'};
+  [...ad].sort((a,b)=>b.oh-a.oh).forEach(d => {
+    const x=xS(d.st),y=yS(d.sales),r=rS(d.oh);
+    const rgb=colorMap[d.action], c=COL[d.action];
+    const short=d.segment.length>15?d.segment.slice(0,14)+'…':d.segment;
+    h+=`<circle cx="${x}" cy="${y}" r="${r}" fill="rgba(${rgb},0.12)" stroke="${c}" stroke-width="1.5" data-seg="${d.segment}" class="bbl" style="cursor:pointer"/>`;
+    if (r>9) h+=`<text x="${x}" y="${y+3}" text-anchor="middle" font-size="6.5" font-family="DM Mono" fill="${c}" pointer-events="none">${short}</text>`;
+  });
+  h+='</svg>';
+  const parent=document.getElementById('bsvg').parentElement;
+  const dummy=document.createElement('div');
+  dummy.innerHTML=h;
+  const newSvg=dummy.firstChild;
+  newSvg.id='bsvg';
+  parent.replaceChild(newSvg,document.getElementById('bsvg'));
+  document.querySelectorAll('.bbl').forEach(b => {
+    b.addEventListener('mouseenter', e => {
+      const d=D.find(x=>x.area===area&&x.segment===e.target.getAttribute('data-seg'));
+      if (!d) return;
+      const tt=document.getElementById('tt');
+      document.getElementById('tt-n').textContent=d.segment;
+      document.getElementById('tt-c').textContent=d.division+' · '+d.category;
+      document.getElementById('tt-s').textContent=ff$(d.sales);
+      document.getElementById('tt-o').textContent=fn(d.oh)+' units';
+      document.getElementById('tt-st').textContent=d.st+'%';
+      document.getElementById('tt-a').textContent='$'+d.aur;
+      document.getElementById('tt-ac').textContent=d.action;
+      document.getElementById('tt-ac').style.color=COL[d.action];
+      tt.style.opacity=1;
+    });
+    b.addEventListener('mousemove', e => { const tt=document.getElementById('tt'); tt.style.left=(e.clientX+14)+'px'; tt.style.top=(e.clientY-44)+'px'; });
+    b.addEventListener('mouseleave', () => { document.getElementById('tt').style.opacity=0; });
+  });
+}
+
+function buildHeader() {
+  const cols=[{k:'segment',l:'Segment'},{k:'sales',l:'Net Sales'},{k:'st',l:'Sell Thru'},{k:'oh',l:'On Hand'},{k:'aur',l:'AUR'},{k:'action',l:'Action'}];
+  document.getElementById('th').innerHTML=cols.map(c => {
+    let cls=''; if (sk===c.k) cls=sd===-1?'sa':'sd';
+    return `<th class="${cls}" onclick="srt('${c.k}')">${c.l}</th>`;
+  }).join('');
+}
+
+function srt(k) { if (sk===k) sd*=-1; else { sk=k; sd=k==='segment'||k==='action'?1:-1; } render(); }
+window.srt=srt;
+
+function buildTable() {
+  const rows=D.filter(d=>d.area===area&&acts.has(d.action)&&(curDiv==='All'||d.division===curDiv)).sort((a,b) => {
+    const av=a[sk],bv=b[sk];
+    if (typeof av==='string') return sd*av.localeCompare(bv);
+    return sd*(av-bv);
+  });
+  const tbody=document.getElementById('tb');
+  const nd=document.getElementById('nd');
+  if (!rows.length) { tbody.innerHTML=''; nd.textContent='No data for current filters'; nd.style.display='block'; return; }
+  nd.style.display='none';
+  tbody.innerHTML=rows.map(d => {
+    const bw=Math.min((d.st/20)*80,80);
+    const c=COL[d.action];
+    return `<tr class="row">
+      <td><div class="sn">${d.segment}</div><div class="sm">${d.division} · ${d.category}</div></td>
+      <td><div class="sv">${ff$(d.sales)}</div><div class="sv2">${fn(d.units)} units</div></td>
+      <td><div class="stw"><div class="stb" style="width:${bw}px;background:${c}"></div><span class="stn" style="color:${c}">${d.st}%</span></div></td>
+      <td><div class="sv2">${fn(d.oh)}</div></td>
+      <td><div class="sv2">$${d.aur}</div></td>
+      <td><span class="badge ${AC[d.action]}">${d.action}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function render() { buildStats(); buildHeader(); buildTable(); setTimeout(buildChart,30); }
+
+document.getElementById('leg').addEventListener('click', e => {
+  const li=e.target.closest('.li'); if (!li) return;
+  const a=li.dataset.a;
+  if (acts.has(a)) acts.delete(a); else acts.add(a);
+  li.classList.toggle('on');
+  render();
+});
+
+loadData();
+window.addEventListener('resize', () => setTimeout(buildChart,50));
+</script>
+</body>
+</html>

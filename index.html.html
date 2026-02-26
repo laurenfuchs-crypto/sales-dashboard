@@ -151,7 +151,7 @@ td:first-child { padding-left:28px; }
 <body>
 <div id="tt"><div class="tn" id="tt-n"></div><div class="tr"><span>Category</span><b id="tt-c"></b></div><div class="tr"><span>Net Sales</span><b id="tt-s"></b></div><div class="tr"><span>On Hand</span><b id="tt-o"></b></div><div class="tr"><span>Sell Thru</span><b id="tt-st"></b></div><div class="tr"><span>AUR</span><b id="tt-a"></b></div><div class="tr"><span>Action</span><b id="tt-ac"></b></div></div>
 <header>
-  <div><h1>Full Price Performance <em>by Area</em></h1><div class="header-sub">Full Price &nbsp;·&nbsp; Top 15 segments per division per area</div></div>
+  <div><h1>Full Price Performance <em>by Area</em></h1><div class="header-sub">Full Price &nbsp;·&nbsp; All segments by area</div></div>
   <div class="legend" id="leg">
     <div class="li on" data-a="Chase / Replenish"><div class="ld" style="background:var(--chase)"></div>Chase</div>
     <div class="li on" data-a="Protect Full Price"><div class="ld" style="background:var(--protect)"></div>Protect</div>
@@ -276,27 +276,16 @@ function processRows(rawRows) {
     r.action = st>=8?'Chase / Replenish':st>=5.5?'Protect Full Price':st>=3.5?'Monitor & Set Triggers':'Markdown Now';
   });
 
-  // Top 15 per division per area
-  const divs = ['Mens','Womens','Non Apparel'];
+  // All segments, no cap — exclude "Not set in NetSuite"
   const areas = [...new Set(rows.map(r=>r.area))];
-  const D = [], seen = new Set();
-  areas.forEach(a => {
-    divs.forEach(div => {
-      rows.filter(r=>r.area===a&&r.division===div)
-        .sort((a,b)=>b.sales-a.sales).slice(0,15)
-        .forEach(r => {
-          const key = `${r.area}|${r.division}|${r.segment}`;
-          if (!seen.has(key)) { seen.add(key); D.push(r); }
-        });
-    });
-  });
+  const D = rows.filter(r => !r.segment.toLowerCase().includes('not set in netsuite'));
 
   // Summary by division
   const SBD = {};
   areas.forEach(a => {
     SBD[a] = {};
     ['All','Mens','Womens','Non Apparel'].forEach(div => {
-      const sub = rows.filter(r=>r.area===a&&(div==='All'||r.division===div));
+      const sub = rows.filter(r=>r.area===a&&(div==='All'||r.division===div)&&!r.segment.toLowerCase().includes('not set in netsuite'));
       const ts = sub.reduce((s,r)=>s+r.sales,0);
       const tu = sub.reduce((s,r)=>s+r.units,0);
       const to = sub.reduce((s,r)=>s+r.oh,0);
